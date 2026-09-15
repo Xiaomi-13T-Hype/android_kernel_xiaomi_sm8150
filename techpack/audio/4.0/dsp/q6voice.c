@@ -5702,6 +5702,10 @@ static int voice_send_vol_step_cmd(struct voice_data *v)
 		return -EINVAL;
 	}
 	if (v->async_err > 0) {
+		if (v->async_err == ADSP_EALREADY) {
+			pr_debug("%s: DSP returned ADSP_EALREADY, ignoring\n", __func__);
+			return 0;
+		}
 		pr_err("%s: DSP returned error[%s]\n",
 				__func__, adsp_err_get_err_str(
 				v->async_err));
