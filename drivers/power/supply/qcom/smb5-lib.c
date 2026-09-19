@@ -54,6 +54,7 @@
 static bool off_charge_flag;
 #if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
 static bool first_boot_flag;
+static int bypass_charging = 0;
 #endif
 
 bool smblib_rsbux_low(struct smb_charger *chg, int r_thr);
@@ -2406,13 +2407,13 @@ static void smblib_get_start_vbat_before_step_charge(struct smb_charger *chg)
 int smblib_get_prop_input_suspend(struct smb_charger *chg,
 				  union power_supply_propval *val)
 {
-	val->intval
-		= (get_client_vote(chg->usb_icl_votable, USER_VOTER) == 0)
-#ifdef CONFIG_MACH_XIAOMI_SM8150
-		 || get_client_vote(chg->dc_suspend_votable, USER_VOTER);
-#else
-		 && get_client_vote(chg->dc_suspend_votable, USER_VOTER);
-#endif
+	if ((get_client_vote(chg->chg_disable_votable, BYPASS_VOTER) == 1)) {
+		val->intval = 1;
+	} else if (bypass_charging) {
+		val->intval = 2;
+	} else {
+		val->intval = 0;
+	}
 	return 0;
 }
 
@@ -3320,17 +3321,34 @@ int smblib_set_prop_input_suspend(struct smb_charger *chg,
 	int rc;
 
 	/* vote 0mA when suspended */
-	rc = vote(chg->usb_icl_votable, USER_VOTER, (bool)val->intval, 0);
+	rc = vote(chg->usb_icl_votable, USER_VOTER, false, 0);
 	if (rc < 0) {
 		smblib_err(chg, "Couldn't vote to %s USB rc=%d\n",
 			(bool)val->intval ? "suspend" : "resume", rc);
 		return rc;
 	}
 
-	rc = vote(chg->dc_suspend_votable, USER_VOTER, (bool)val->intval, 0);
+	rc = vote(chg->dc_suspend_votable, USER_VOTER, false, 0);
 	if (rc < 0) {
 		smblib_err(chg, "Couldn't vote to %s DC rc=%d\n",
 			(bool)val->intval ? "suspend" : "resume", rc);
+		return rc;
+	}
+
+	if (val->intval == 1) {
+		rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 1, 0);
+		bypass_charging = 0;
+	} else if (val->intval == 2) {
+		rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
+		bypass_charging = 1;
+	} else {
+		rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
+		bypass_charging = 0;
+	}
+
+	if (rc < 0) {
+		smblib_err(chg, "Couldn't vote to %d input_suspend rc=%d\n",
+			val->intval, rc);
 		return rc;
 	}
 
@@ -3724,6 +3742,9 @@ static void smblib_thermal_setting_work(struct work_struct *work)
 	struct smb_charger *chg = container_of(work, struct smb_charger,
 						thermal_setting_work.work);
 
+	if (bypass_charging)
+		chg->pps_thermal_level = 0;
+
 	if (chg->pps_thermal_level > chg->system_temp_level) {
 		if (chg->pps_thermal_level - chg->system_temp_level >= 2)
 			chg->pps_thermal_level -= 2;
@@ -3770,7 +3791,10 @@ int smblib_set_prop_system_temp_level(struct smb_charger *chg,
 	if (val->intval > chg->thermal_levels)
 		return -EINVAL;
 
-	chg->system_temp_level = val->intval;
+	if (bypass_charging)
+		chg->system_temp_level = 0;
+	else
+		chg->system_temp_level = val->intval;
 
 #if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
 	if (!chg->use_bq_pump) {

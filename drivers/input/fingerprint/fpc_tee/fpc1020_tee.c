@@ -484,14 +484,12 @@ static ssize_t wakeup_enable_set(struct device *dev,
 	ssize_t ret = count;
 
 	mutex_lock(&fpc1020->lock);
-	/*
-	if (!strncmp(buf, "enable", strlen("enable")))
+	if (!strncmp(buf, "enable", strlen("enable")) || !strncmp(buf, "1", 1))
 		atomic_set(&fpc1020->wakeup_enabled, 1);
-	else if (!strncmp(buf, "disable", strlen("disable")))
+	else if (!strncmp(buf, "disable", strlen("disable")) || !strncmp(buf, "0", 1))
 		atomic_set(&fpc1020->wakeup_enabled, 0);
 	else
 		ret = -EINVAL;
-	*/
 	mutex_unlock(&fpc1020->lock);
 
 	return ret;
@@ -625,9 +623,7 @@ static irqreturn_t fpc1020_irq_handler(int irq, void *handle)
 
 	dev_dbg(fpc1020->dev, "%s\n", __func__);
 
-	if (atomic_read(&fpc1020->wakeup_enabled)) {
-		__pm_wakeup_event(&fpc1020->ttw_wl, FPC_TTW_HOLD_TIME);
-	}
+	__pm_wakeup_event(&fpc1020->ttw_wl, FPC_TTW_HOLD_TIME);
 
 	sysfs_notify(&fpc1020->dev->kobj, NULL, dev_attr_irq.attr.name);
 	if (fpc1020->wait_finger_down && fpc1020->fb_black &&

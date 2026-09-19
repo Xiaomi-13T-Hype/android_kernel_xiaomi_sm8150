@@ -297,6 +297,28 @@ static unsigned int get_next_freq(struct sugov_policy *sg_policy,
 	return cpufreq_driver_resolve_freq(policy, freq);
 }
 
+static inline unsigned long apply_dvfs_headroom(unsigned long util, int cpu)
+{
+	unsigned long capacity = capacity_orig_of(cpu);
+	unsigned long delta, headroom;
+
+	if (util >= capacity)
+		return util;
+
+	if (util < (capacity >> 4)) /* 6.25% */
+		return util;
+
+	/*
+	 * Quadratic taper the boosting at the top end as these are expensive
+	 * and we don't need that much of a big headroom as we approach max
+	 * capacity.
+	 */
+	delta = capacity - util;
+	headroom = ((delta * delta) >> 12);
+
+	return util + headroom;
+}
+
 static void sugov_get_util(unsigned long *util, unsigned long *max, int cpu)
 {
 	struct rq *rq = cpu_rq(cpu);
@@ -309,6 +331,7 @@ static void sugov_get_util(unsigned long *util, unsigned long *max, int cpu)
 	*max = cfs_max;
 
 	*util = boosted_cpu_util(cpu, &loadcpu->walt_load);
+	*util = apply_dvfs_headroom(*util, cpu);
 }
 
 static void sugov_set_iowait_boost(struct sugov_cpu *sg_cpu, u64 time,
