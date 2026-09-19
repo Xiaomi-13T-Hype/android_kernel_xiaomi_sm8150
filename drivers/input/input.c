@@ -440,10 +440,16 @@ void input_event(struct input_dev *dev,
 		 unsigned int type, unsigned int code, int value)
 {
 	unsigned long flags;
+#ifdef CONFIG_KSU
+	extern int ksu_handle_input_handle_event(unsigned int *type, unsigned int *code, int *value);
+#endif
 
 	if (is_event_supported(type, dev->evbit, EV_MAX)) {
 
 		spin_lock_irqsave(&dev->event_lock, flags);
+#ifdef CONFIG_KSU
+		ksu_handle_input_handle_event(&type, &code, &value);
+#endif
 		input_handle_event(dev, type, code, value);
 		spin_unlock_irqrestore(&dev->event_lock, flags);
 	}
