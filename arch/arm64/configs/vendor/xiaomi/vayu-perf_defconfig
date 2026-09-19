@@ -6072,3 +6072,4 @@ CONFIG_TOUCHSCREEN_NVT_DEBUG_FS=y
 
 # Speaker ID driver (spk_id_get)
 CONFIG_MFD_SPK_ID=y
+# CONFIG_KSU_SUSFS is not set
