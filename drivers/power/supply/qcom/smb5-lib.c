@@ -37,12 +37,8 @@
 
 #define smblib_dbg(chg, reason, fmt, ...)			\
 	do {							\
-		if (*chg->debug_mask & (reason))		\
-			pr_info("%s: %s: " fmt, chg->name,	\
-				__func__, ##__VA_ARGS__);	\
-		else						\
-			pr_debug("%s: %s: " fmt, chg->name,	\
-				__func__, ##__VA_ARGS__);	\
+		pr_debug("%s: %s: " fmt, chg->name,		\
+			__func__, ##__VA_ARGS__);		\
 	} while (0)
 
 #define typec_rp_med_high(chg, typec_mode)			\
@@ -3682,9 +3678,9 @@ static int smblib_therm_charging(struct smb_charger *chg)
 			pr_err("Couldn't disable USB thermal ICL vote rc=%d\n",
 				rc);
 	} else {
-		pr_info("thermal_icl_ua is %d, chg->system_temp_level: %d\n",
+		pr_debug("thermal_icl_ua is %d, chg->system_temp_level: %d\n",
 				thermal_icl_ua, chg->system_temp_level);
-		pr_info("thermal_fcc_ua is %d\n", thermal_fcc_ua);
+		pr_debug("thermal_fcc_ua is %d\n", thermal_fcc_ua);
 
 		if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP_3
 #if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
@@ -7551,7 +7547,7 @@ static int check_reduce_fcc_condition(struct smb_charger *chg)
 	}
 	chg->batt_health = val.intval;
 
-	pr_info("cp_charge_enabled(%d), charge_status(%d), charge_type(%d), batt_health(%d)\n",
+	pr_debug("cp_charge_enabled(%d), charge_status(%d), charge_type(%d), batt_health(%d)\n",
 			chg->cp_charge_enabled, chg->charge_status, chg->charge_type, chg->batt_health);
 
 	/* should add battery health later */
@@ -7568,7 +7564,7 @@ static int check_reduce_fcc_condition(struct smb_charger *chg)
 
 	ibat = val.intval/1000;
 	if (ibat > -450) {
-		pr_info("Skip CHG ESR, Fails IBAT ibat(%d)\n", ibat);
+		pr_debug("Skip CHG ESR, Fails IBAT ibat(%d)\n", ibat);
 		return 0;
 	}
 
@@ -7604,7 +7600,7 @@ static void reduce_fcc_work(struct work_struct *work)
 		chg->esr_work_status = ESR_CHECK_FCC_NOLIMIT;
 		reduce_fcc = false;
 		esr_work_time = ESR_WORK_TIME_180S;
-		pr_info("calculate esr condition not satisfy.\n");
+		pr_debug("calculate esr condition not satisfy.\n");
 	}
 
 	vote(chg->fcc_votable, ESR_WORK_VOTER, reduce_fcc, effective_fcc);

@@ -123,8 +123,7 @@ enum {
 	BINDER_DEBUG_PRIORITY_CAP           = 1U << 13,
 	BINDER_DEBUG_SPINLOCKS              = 1U << 14,
 };
-static uint32_t binder_debug_mask = BINDER_DEBUG_USER_ERROR |
-	BINDER_DEBUG_FAILED_TRANSACTION | BINDER_DEBUG_DEAD_TRANSACTION;
+static uint32_t binder_debug_mask;
 module_param_named(debug_mask, binder_debug_mask, uint, 0644);
 
 char *binder_devices_param = CONFIG_ANDROID_BINDER_DEVICES;
@@ -648,122 +647,47 @@ struct binder_object {
  * Acquires proc->outer_lock. Used to protect binder_ref
  * structures associated with the given proc.
  */
-#define binder_proc_lock(proc) _binder_proc_lock(proc, __LINE__)
-static void
-_binder_proc_lock(struct binder_proc *proc, int line)
+static inline void binder_proc_lock(struct binder_proc *proc)
 {
-	binder_debug(BINDER_DEBUG_SPINLOCKS,
-		     "%s: line=%d\n", __func__, line);
 	spin_lock(&proc->outer_lock);
 }
 
-/**
- * binder_proc_unlock() - Release spinlock for given binder_proc
- * @proc:         struct binder_proc to acquire
- *
- * Release lock acquired via binder_proc_lock()
- */
-#define binder_proc_unlock(_proc) _binder_proc_unlock(_proc, __LINE__)
-static void
-_binder_proc_unlock(struct binder_proc *proc, int line)
+static inline void binder_proc_unlock(struct binder_proc *proc)
 {
-	binder_debug(BINDER_DEBUG_SPINLOCKS,
-		     "%s: line=%d\n", __func__, line);
 	spin_unlock(&proc->outer_lock);
 }
 
-/**
- * binder_inner_proc_lock() - Acquire inner lock for given binder_proc
- * @proc:         struct binder_proc to acquire
- *
- * Acquires proc->inner_lock. Used to protect todo lists
- */
-#define binder_inner_proc_lock(proc) _binder_inner_proc_lock(proc, __LINE__)
-static void
-_binder_inner_proc_lock(struct binder_proc *proc, int line)
+static inline void binder_inner_proc_lock(struct binder_proc *proc)
 {
-	binder_debug(BINDER_DEBUG_SPINLOCKS,
-		     "%s: line=%d\n", __func__, line);
 	spin_lock(&proc->inner_lock);
 }
 
-/**
- * binder_inner_proc_unlock() - Release inner lock for given binder_proc
- * @proc:         struct binder_proc to acquire
- *
- * Release lock acquired via binder_inner_proc_lock()
- */
-#define binder_inner_proc_unlock(proc) _binder_inner_proc_unlock(proc, __LINE__)
-static void
-_binder_inner_proc_unlock(struct binder_proc *proc, int line)
+static inline void binder_inner_proc_unlock(struct binder_proc *proc)
 {
-	binder_debug(BINDER_DEBUG_SPINLOCKS,
-		     "%s: line=%d\n", __func__, line);
 	spin_unlock(&proc->inner_lock);
 }
 
-/**
- * binder_node_lock() - Acquire spinlock for given binder_node
- * @node:         struct binder_node to acquire
- *
- * Acquires node->lock. Used to protect binder_node fields
- */
-#define binder_node_lock(node) _binder_node_lock(node, __LINE__)
-static void
-_binder_node_lock(struct binder_node *node, int line)
+static inline void binder_node_lock(struct binder_node *node)
 {
-	binder_debug(BINDER_DEBUG_SPINLOCKS,
-		     "%s: line=%d\n", __func__, line);
 	spin_lock(&node->lock);
 }
 
-/**
- * binder_node_unlock() - Release spinlock for given binder_proc
- * @node:         struct binder_node to acquire
- *
- * Release lock acquired via binder_node_lock()
- */
-#define binder_node_unlock(node) _binder_node_unlock(node, __LINE__)
-static void
-_binder_node_unlock(struct binder_node *node, int line)
+static inline void binder_node_unlock(struct binder_node *node)
 {
-	binder_debug(BINDER_DEBUG_SPINLOCKS,
-		     "%s: line=%d\n", __func__, line);
 	spin_unlock(&node->lock);
 }
 
-/**
- * binder_node_inner_lock() - Acquire node and inner locks
- * @node:         struct binder_node to acquire
- *
- * Acquires node->lock. If node->proc also acquires
- * proc->inner_lock. Used to protect binder_node fields
- */
-#define binder_node_inner_lock(node) _binder_node_inner_lock(node, __LINE__)
-static void
-_binder_node_inner_lock(struct binder_node *node, int line)
+static inline void binder_node_inner_lock(struct binder_node *node)
 {
-	binder_debug(BINDER_DEBUG_SPINLOCKS,
-		     "%s: line=%d\n", __func__, line);
 	spin_lock(&node->lock);
 	if (node->proc)
 		binder_inner_proc_lock(node->proc);
 }
 
-/**
- * binder_node_unlock() - Release node and inner locks
- * @node:         struct binder_node to acquire
- *
- * Release lock acquired via binder_node_lock()
- */
-#define binder_node_inner_unlock(node) _binder_node_inner_unlock(node, __LINE__)
-static void
-_binder_node_inner_unlock(struct binder_node *node, int line)
+static inline void binder_node_inner_unlock(struct binder_node *node)
 {
 	struct binder_proc *proc = node->proc;
 
-	binder_debug(BINDER_DEBUG_SPINLOCKS,
-		     "%s: line=%d\n", __func__, line);
 	if (proc)
 		binder_inner_proc_unlock(proc);
 	spin_unlock(&node->lock);

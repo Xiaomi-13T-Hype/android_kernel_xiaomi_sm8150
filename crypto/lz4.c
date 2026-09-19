@@ -117,6 +117,35 @@ static int lz4_decompress_crypto(struct crypto_tfm *tfm, const u8 *src,
 	return __lz4_decompress_crypto(src, slen, dst, dlen, NULL);
 }
 
+static int __lz4rle_compress_crypto(const u8 *src, unsigned int slen,
+				    u8 *dst, unsigned int *dlen, void *ctx)
+{
+	int out_len = LZ4_compress_fast(src, dst, slen, *dlen,
+					LZ4_ACCELERATION_DEFAULT, ctx);
+
+	if (!out_len)
+		return -EINVAL;
+
+	*dlen = out_len;
+	return 0;
+}
+
+static int lz4rle_scompress(struct crypto_scomp *tfm, const u8 *src,
+			    unsigned int slen, u8 *dst, unsigned int *dlen,
+			    void *ctx)
+{
+	return __lz4rle_compress_crypto(src, slen, dst, dlen, ctx);
+}
+
+static int lz4rle_compress_crypto(struct crypto_tfm *tfm, const u8 *src,
+				  unsigned int slen, u8 *dst,
+				  unsigned int *dlen)
+{
+	struct lz4_ctx *ctx = crypto_tfm_ctx(tfm);
+
+	return __lz4rle_compress_crypto(src, slen, dst, dlen, ctx->lz4_comp_mem);
+}
+
 static struct crypto_alg alg_lz4 = {
 	.cra_name		= "lz4",
 	.cra_flags		= CRYPTO_ALG_TYPE_COMPRESS,
@@ -142,6 +171,31 @@ static struct scomp_alg scomp = {
 	}
 };
 
+static struct crypto_alg alg_lz4rle = {
+	.cra_name		= "lz4-rle",
+	.cra_flags		= CRYPTO_ALG_TYPE_COMPRESS,
+	.cra_ctxsize		= sizeof(struct lz4_ctx),
+	.cra_module		= THIS_MODULE,
+	.cra_list		= LIST_HEAD_INIT(alg_lz4rle.cra_list),
+	.cra_init		= lz4_init,
+	.cra_exit		= lz4_exit,
+	.cra_u			= { .compress = {
+	.coa_compress		= lz4rle_compress_crypto,
+	.coa_decompress		= lz4_decompress_crypto } }
+};
+
+static struct scomp_alg scomp_rle = {
+	.alloc_ctx		= lz4_alloc_ctx,
+	.free_ctx		= lz4_free_ctx,
+	.compress		= lz4rle_scompress,
+	.decompress		= lz4_sdecompress,
+	.base			= {
+		.cra_name	= "lz4-rle",
+		.cra_driver_name = "lz4-rle-scomp",
+		.cra_module	 = THIS_MODULE,
+	}
+};
+
 static int __init lz4_mod_init(void)
 {
 	int ret;
@@ -156,11 +210,28 @@ static int __init lz4_mod_init(void)
 		return ret;
 	}
 
-	return ret;
+	ret = crypto_register_alg(&alg_lz4rle);
+	if (ret) {
+		crypto_unregister_scomp(&scomp);
+		crypto_unregister_alg(&alg_lz4);
+		return ret;
+	}
+
+	ret = crypto_register_scomp(&scomp_rle);
+	if (ret) {
+		crypto_unregister_alg(&alg_lz4rle);
+		crypto_unregister_scomp(&scomp);
+		crypto_unregister_alg(&alg_lz4);
+		return ret;
+	}
+
+	return 0;
 }
 
 static void __exit lz4_mod_fini(void)
 {
+	crypto_unregister_alg(&alg_lz4rle);
+	crypto_unregister_scomp(&scomp_rle);
 	crypto_unregister_alg(&alg_lz4);
 	crypto_unregister_scomp(&scomp);
 }
@@ -171,3 +242,4 @@ module_exit(lz4_mod_fini);
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("LZ4 Compression Algorithm");
 MODULE_ALIAS_CRYPTO("lz4");
+MODULE_ALIAS_CRYPTO("lz4-rle");
