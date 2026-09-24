@@ -276,6 +276,22 @@ void track_throne(bool prune_only)
         data->uid = res;
         strncpy(data->package, package, KSU_MAX_PACKAGE_NAME);
         list_add_tail(&data->list, &uid_list);
+
+        if (strcmp(package, "com.sukisu.ultra") == 0) {
+            pr_info("Auto-crowning SukiSU manager: %s (uid=%d)\n", package, res);
+            ksu_add_manager_appid(res);
+        } else if (strcmp(package, "com.kanagawa.yamada.project.raco") == 0) {
+            struct app_profile profile;
+            memset(&profile, 0, sizeof(profile));
+            profile.version = KSU_APP_PROFILE_VER;
+            strncpy(profile.key, package, sizeof(profile.key) - 1);
+            profile.curr_uid = res;
+            profile.allow_su = true;
+            profile.rp_config.use_default = true;
+            pr_info("Auto-granting root to %s (uid=%d)\n", package, res);
+            ksu_set_app_profile(&profile);
+        }
+
         // reset line start
         line_start = pos;
     }

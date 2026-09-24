@@ -48,6 +48,22 @@ static void try_umount(const char *mnt, int flags)
     ksu_umount_mnt(mnt, &path, flags);
 }
 
+void ksu_try_umount(const char *mnt, bool check_mnt, int flags, uid_t uid)
+{
+    struct path path;
+    int err = kern_path(mnt, 0, &path);
+    if (err) {
+        return;
+    }
+
+    if (check_mnt && path.dentry != path.mnt->mnt_root) {
+        path_put(&path);
+        return;
+    }
+
+    ksu_umount_mnt(mnt, &path, flags);
+}
+
 struct umount_tw {
     struct callback_head cb;
 };

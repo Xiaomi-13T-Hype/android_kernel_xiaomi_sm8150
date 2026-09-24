@@ -20,7 +20,11 @@ static int ksu_key_permission(key_ref_t key_ref, const struct cred *cred, unsign
 extern u32 susfs_zygote_sid;
 extern u32 susfs_zygote_next_sid;
 extern void disable_seccomp(void);
-extern struct work_struct susfs_extra_works;
+extern bool is_zygote(const struct cred *cred);
+static void susfs_extra_work_fn(struct work_struct *work)
+{
+}
+static DECLARE_WORK(susfs_extra_works, susfs_extra_work_fn);
 
 static inline void ksu_handle_extra_susfs_work(void)
 {
@@ -137,7 +141,7 @@ int ksu_handle_setresuid(uid_t ruid, uid_t euid, uid_t suid)
         return 0;
 
     // We only interest in process spwaned by zygote or zygote_next
-    if (susfs_is_sid_equal(current_cred(), susfs_zygote_sid))
+    if (susfs_is_sid_equal(current_cred(), susfs_zygote_sid) || is_zygote(current_cred()))
         return handle_zygote_setresuid(ruid);
 
     if (susfs_is_sid_equal(current_cred(), susfs_zygote_next_sid))

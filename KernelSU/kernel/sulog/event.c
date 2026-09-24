@@ -142,7 +142,7 @@ static __u32 ksu_sulog_flatten_argv(struct user_arg_ptr *argv_user, char *dst, _
             return ksu_sulog_copy_empty_string(dst);
 
         copied =
-            strncpy_from_user_nofault(arg, (const void __user *)untagged_addr((unsigned long)arg_user), sizeof(arg));
+            ksu_strncpy_from_user_nofault(arg, (const void __user *)untagged_addr((unsigned long)arg_user), sizeof(arg));
         if (copied <= 0)
             return ksu_sulog_copy_empty_string(dst);
 
@@ -376,7 +376,11 @@ static struct ksu_sulog_pending_event *ksu_sulog_capture_grant_root(const struct
     // This is actually stupid fix
     #define USER_ARG_NULL user_arg_null_ptr()
 
+#ifdef CONFIG_KSU_SUSFS
+    pending = ksu_sulog_capture(KSU_SULOG_EVENT_IOCTL_GRANT_ROOT, NULL, USER_ARG_NULL, gfp);
+#else
     pending = ksu_sulog_capture(KSU_SULOG_EVENT_IOCTL_GRANT_ROOT, NULL, *USER_ARG_NULL, gfp);
+#endif
     if (!pending)
         return NULL;
 

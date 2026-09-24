@@ -376,7 +376,8 @@ static void __qrtr_node_release(struct kref *kref)
 	}
 	mutex_unlock(&node->qrtr_tx_lock);
 
-	wakeup_source_unregister(node->ws);
+	if (node->ws)
+		wakeup_source_unregister(node->ws);
 	kthread_flush_worker(&node->kworker);
 	kthread_stop(node->task);
 
@@ -653,12 +654,14 @@ static void qrtr_node_assign(struct qrtr_node *node, unsigned int nid)
 	if (!node->ilc) {
 		node->ilc = ipc_log_context_create(QRTR_LOG_PAGE_CNT, name, 0);
 	}
-	/* create wakeup source for only  NID = 0.
-	 * From other nodes sensor service stream samples
-	 * cause APPS suspend problems and power drain issue.
+	/* Do not register wakeup source for qrtr nodes.
+	 * Continuous incoming IPC packets cause APPS suspend aborts and severe power drain.
+	 * Hardware interrupts wake up APPS when necessary.
 	 */
+#if 0
 	if (!node->ws && nid == 0)
 		node->ws = wakeup_source_register(NULL, name);
+#endif
 }
 
 /**
@@ -841,7 +844,8 @@ int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len)
 	    cb->type != QRTR_TYPE_RESUME_TX)
 		goto err;
 
-	__pm_wakeup_event(node->ws, 0);
+	if (node->ws)
+		__pm_wakeup_event(node->ws, 0);
 
 	skb->data_len = size;
 	skb->len = size;

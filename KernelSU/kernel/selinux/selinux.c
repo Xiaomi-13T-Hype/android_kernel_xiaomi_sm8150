@@ -123,6 +123,10 @@ static void __security_release_secctx(struct lsm_context *cp)
 #define __security_release_secctx security_release_secctx
 #endif
 
+#ifdef CONFIG_KSU_SUSFS
+void susfs_set_batch_sid(void);
+#endif
+
 /*
  * Initialize cached SID values for frequently checked SELinux contexts.
  * Called once after SELinux policy is loaded (post-fs-data).
@@ -163,6 +167,9 @@ void cache_sid(void)
     } else {
         pr_info("Cached ksu_file SID: %u\n", ksu_file_sid);
     }
+#ifdef CONFIG_KSU_SUSFS
+    susfs_set_batch_sid();
+#endif
 }
 
 /*
