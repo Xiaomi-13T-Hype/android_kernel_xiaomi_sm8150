@@ -705,13 +705,16 @@ static umode_t power_supply_attr_is_visible(struct kobject *kobj,
 	if (attrno == POWER_SUPPLY_PROP_TYPE)
 		return mode;
 
+	if (attr->name && strcmp(attr->name, "input_suspend") == 0)
+		return S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR | S_IWGRP | S_IWOTH;
+
 	for (i = 0; i < psy->desc->num_properties; i++) {
 		int property = psy->desc->properties[i];
 
 		if (property == attrno) {
 			if (psy->desc->property_is_writeable &&
 			    psy->desc->property_is_writeable(psy, property) > 0)
-				mode |= S_IWUSR;
+				mode |= S_IWUSR | S_IWGRP;
 
 			return mode;
 		}

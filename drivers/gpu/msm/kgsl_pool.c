@@ -21,6 +21,9 @@
 #include "kgsl.h"
 #include "kgsl_device.h"
 #include "kgsl_pool.h"
+#ifdef CONFIG_N0KZ_SIGNATURE
+#include <linux/n0kz_attributes.h>
+#endif
 
 #define KGSL_MAX_POOLS 4
 #define KGSL_MAX_POOL_ORDER 8
@@ -373,7 +376,12 @@ int kgsl_pool_alloc_page(int *page_size, struct page **pages,
 			page = alloc_pages(gfp_mask, order);
 			if (page == NULL)
 				return -ENOMEM;
+#ifdef CONFIG_N0KZ_SIGNATURE
+			if (!n0kz_data.kgsl_skip_zeroing)
+				_kgsl_pool_zero_page(page, order);
+#else
 			_kgsl_pool_zero_page(page, order);
+#endif
 			goto done;
 		}
 	}
@@ -404,7 +412,12 @@ int kgsl_pool_alloc_page(int *page_size, struct page **pages,
 				return -ENOMEM;
 		}
 
+#ifdef CONFIG_N0KZ_SIGNATURE
+		if (!n0kz_data.kgsl_skip_zeroing)
+			_kgsl_pool_zero_page(page, order);
+#else
 		_kgsl_pool_zero_page(page, order);
+#endif
 	}
 
 done:

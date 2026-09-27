@@ -1,0 +1,27 @@
+/*
+ * N0KZ / E404 Kernel Attributes Header
+ * Author: Xiaomi-13T-Hype | モトテーパー
+ *
+ * SPDX-License-Identifier: GPL-2.0
+ */
+
+#ifndef _LINUX_N0KZ_ATTRIBUTES_H
+#define _LINUX_N0KZ_ATTRIBUTES_H
+
+#include <linux/init.h>
+#include <linux/module.h>
+#include <linux/kernel.h>
+#include <linux/kobject.h>
+#include <linux/sysfs.h>
+
+#ifndef _STRUCT_N0KZ_ATTRIBUTES
+#define _STRUCT_N0KZ_ATTRIBUTES
+struct n0kz_attributes {
+	int kgsl_skip_zeroing;
+	int avoid_dirty_pte;
+};
+#endif
+
+extern struct n0kz_attributes n0kz_data;
+
+#endif /* _LINUX_N0KZ_ATTRIBUTES_H */

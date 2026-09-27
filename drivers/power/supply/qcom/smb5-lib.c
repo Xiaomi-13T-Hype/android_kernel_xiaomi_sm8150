@@ -24,6 +24,7 @@
 #include <linux/of_batterydata.h>
 #include <linux/ktime.h>
 #include <linux/gpio.h>
+#include <linux/fastchg.h>
 #include "smb5-lib.h"
 #include "smb5-reg.h"
 #include "schgm-flash.h"
@@ -1737,6 +1738,11 @@ static int set_sdp_current(struct smb_charger *chg, int icl_ua)
 	u8 icl_options;
 	const struct apsd_result *apsd_result = smblib_get_apsd_result(chg);
 
+#ifdef CONFIG_FORCE_FAST_CHARGE
+	if (force_fast_charge > 0 && icl_ua == USBIN_500MA)
+		icl_ua = USBIN_900MA;
+#endif
+
 	/* power source is SDP */
 	switch (icl_ua) {
 	case USBIN_100MA:
@@ -2403,10 +2409,11 @@ static void smblib_get_start_vbat_before_step_charge(struct smb_charger *chg)
 int smblib_get_prop_input_suspend(struct smb_charger *chg,
 				  union power_supply_propval *val)
 {
-	if ((get_client_vote(chg->chg_disable_votable, BYPASS_VOTER) == 1)) {
+	if (bypass_charging == 1 || (chg->chg_disable_votable &&
+	    get_client_vote(chg->chg_disable_votable, BYPASS_VOTER) > 0)) {
 		val->intval = 1;
 	} else if (bypass_charging) {
-		val->intval = 2;
+		val->intval = bypass_charging;
 	} else {
 		val->intval = 0;
 	}
@@ -3314,31 +3321,32 @@ int smblib_get_prop_battery_bq_input_suspend(struct smb_charger *chg,
 int smblib_set_prop_input_suspend(struct smb_charger *chg,
 				  const union power_supply_propval *val)
 {
-	int rc;
+	int rc = 0;
 
-	/* vote 0mA when suspended */
+	/* Keep USB/DC input alive so system is powered from cable */
 	rc = vote(chg->usb_icl_votable, USER_VOTER, false, 0);
 	if (rc < 0) {
-		smblib_err(chg, "Couldn't vote to %s USB rc=%d\n",
-			(bool)val->intval ? "suspend" : "resume", rc);
+		smblib_err(chg, "Couldn't vote to resume USB rc=%d\n", rc);
 		return rc;
 	}
 
 	rc = vote(chg->dc_suspend_votable, USER_VOTER, false, 0);
 	if (rc < 0) {
-		smblib_err(chg, "Couldn't vote to %s DC rc=%d\n",
-			(bool)val->intval ? "suspend" : "resume", rc);
+		smblib_err(chg, "Couldn't vote to resume DC rc=%d\n", rc);
 		return rc;
 	}
 
 	if (val->intval == 1) {
-		rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 1, 0);
-		bypass_charging = 0;
-	} else if (val->intval == 2) {
-		rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
+		if (chg->chg_disable_votable)
+			rc = vote(chg->chg_disable_votable, BYPASS_VOTER, true, 0);
 		bypass_charging = 1;
+	} else if (val->intval == 2) {
+		if (chg->chg_disable_votable)
+			rc = vote(chg->chg_disable_votable, BYPASS_VOTER, false, 0);
+		bypass_charging = 2;
 	} else {
-		rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
+		if (chg->chg_disable_votable)
+			rc = vote(chg->chg_disable_votable, BYPASS_VOTER, false, 0);
 		bypass_charging = 0;
 	}
 
