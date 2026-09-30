@@ -997,10 +997,10 @@ static int cam_cpas_hw_start(void *hw_priv, void *start_args,
 	}
 
 	if (CAM_CPAS_CLIENT_STARTED(cpas_core, client_indx)) {
-		CAM_ERR(CAM_CPAS, "client=[%d][%s][%d] is in start state",
+		CAM_WARN(CAM_CPAS, "client=[%d][%s][%d] is already in start state",
 			client_indx, cpas_client->data.identifier,
 			cpas_client->data.cell_index);
-		rc = -EPERM;
+		rc = 0;
 		goto done;
 	}
 
