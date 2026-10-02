@@ -812,6 +812,7 @@ KBUILD_CFLAGS += $(call cc-disable-warning, unused-const-variable)
 
 # These result in bogus false positives
 KBUILD_CFLAGS += $(call cc-disable-warning, dangling-pointer)
+KBUILD_CFLAGS += $(call cc-disable-warning, default-const-init-var-unsafe)
 
 ifdef CONFIG_FRAME_POINTER
 KBUILD_CFLAGS	+= -fno-omit-frame-pointer -fno-optimize-sibling-calls
