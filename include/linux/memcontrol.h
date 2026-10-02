@@ -281,6 +281,11 @@ struct mem_cgroup {
 	struct list_head event_list;
 	spinlock_t event_list_lock;
 
+#ifdef CONFIG_LRU_GEN
+	/* per-memcg mm_struct list */
+	struct lru_gen_mm_list mm_list;
+#endif
+
 	struct mem_cgroup_per_node *nodeinfo[0];
 	/* WARNING: nodeinfo must be the last member here */
 };
@@ -379,6 +384,7 @@ static inline unsigned short mem_cgroup_id(struct mem_cgroup *memcg)
 	return memcg->id.id;
 }
 struct mem_cgroup *mem_cgroup_from_id(unsigned short id);
+struct mem_cgroup *get_mem_cgroup_from_mm(struct mm_struct *mm);
 
 static inline struct mem_cgroup *lruvec_memcg(struct lruvec *lruvec)
 {
@@ -403,6 +409,28 @@ static inline struct mem_cgroup *parent_mem_cgroup(struct mem_cgroup *memcg)
 	if (!memcg->memory.parent)
 		return NULL;
 	return mem_cgroup_from_counter(memcg->memory.parent, memory);
+}
+
+enum mem_cgroup_protection {
+	MEMCG_PROT_NONE,
+	MEMCG_PROT_LOW,
+	MEMCG_PROT_MIN,
+};
+
+static inline enum mem_cgroup_protection mem_cgroup_protected(struct mem_cgroup *root,
+							      struct mem_cgroup *memcg)
+{
+	if (mem_cgroup_disabled() || !memcg)
+		return MEMCG_PROT_NONE;
+	if (mem_cgroup_low(root, memcg))
+		return MEMCG_PROT_LOW;
+	return MEMCG_PROT_NONE;
+}
+
+static inline void mem_cgroup_put(struct mem_cgroup *memcg)
+{
+	if (memcg)
+		css_put(&memcg->css);
 }
 
 static inline bool mem_cgroup_is_descendant(struct mem_cgroup *memcg,
@@ -506,6 +534,23 @@ extern int do_swap_account;
 struct mem_cgroup *lock_page_memcg(struct page *page);
 void __unlock_page_memcg(struct mem_cgroup *memcg);
 void unlock_page_memcg(struct page *page);
+
+/* try to stabilize page_memcg() for all the pages in a memcg */
+static inline bool mem_cgroup_trylock_pages(struct mem_cgroup *memcg)
+{
+	rcu_read_lock();
+
+	if (mem_cgroup_disabled() || !atomic_read(&memcg->moving_account))
+		return true;
+
+	rcu_read_unlock();
+	return false;
+}
+
+static inline void mem_cgroup_unlock_pages(void)
+{
+	rcu_read_unlock();
+}
 
 /*
  * idx can be of type enum memcg_stat_item or node_stat_item.
@@ -857,6 +902,21 @@ static inline struct mem_cgroup *mem_cgroup_from_id(unsigned short id)
 	return NULL;
 }
 
+static inline struct mem_cgroup *get_mem_cgroup_from_mm(struct mm_struct *mm)
+{
+	return NULL;
+}
+
+static inline void mem_cgroup_put(struct mem_cgroup *memcg)
+{
+}
+
+static inline enum mem_cgroup_protection mem_cgroup_protected(struct mem_cgroup *root,
+							      struct mem_cgroup *memcg)
+{
+	return MEMCG_PROT_NONE;
+}
+
 static inline struct mem_cgroup *lruvec_memcg(struct lruvec *lruvec)
 {
 	return NULL;
@@ -907,6 +967,18 @@ static inline void __unlock_page_memcg(struct mem_cgroup *memcg)
 
 static inline void unlock_page_memcg(struct page *page)
 {
+}
+
+static inline bool mem_cgroup_trylock_pages(struct mem_cgroup *memcg)
+{
+	/* to match page_memcg_rcu() */
+	rcu_read_lock();
+	return true;
+}
+
+static inline void mem_cgroup_unlock_pages(void)
+{
+	rcu_read_unlock();
 }
 
 static inline void mem_cgroup_handle_over_high(void)

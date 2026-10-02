@@ -957,6 +957,11 @@ config HAVE_ARCH_HASH
 	  file which provides platform-specific implementations of some
 	  functions in <linux/hash.h> or fs/namei.c.
 
+config ARCH_HAS_HW_PTE_YOUNG
+	bool
+	help
+	  Architecture supports the hardware accessed bit.
+
 config ISA_BUS_API
 	def_bool ISA
 
