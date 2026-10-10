@@ -95,16 +95,16 @@ enum hvdcp3_type {
 #define HVDCP3P5_IBAT_MINUS_DEV_VAL 300
 #define HVDCP3P5_IBAT_PLUS_DEV_VAL 200
 
-#define MAX_THERMAL_LEVEL 13
+#define MAX_THERMAL_LEVEL 16
 /* jeita related */
-#define JEITA_WARM_THR 450
+#define JEITA_WARM_THR 470
 #define JEITA_COOL_NOT_ALLOW_CP_THR 100
 /*
  * add hysteresis for warm threshold to avoid flash
  * charge and normal charge switch frequently at
  * the warm threshold
  */
-#define JEITA_HYSTERESIS 20
+#define JEITA_HYSTERESIS 10
 
 #define HIGH_CAPACITY_TRH 90
 #define PM_WORK_TIME_100MS 100

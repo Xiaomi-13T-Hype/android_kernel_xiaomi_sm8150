@@ -5272,6 +5272,7 @@ static void shrink_node_memcg(struct pglist_data *pgdat, struct mem_cgroup *memc
 	bool scan_adjusted;
 
 	if (lru_gen_enabled()) {
+		*lru_pages = 0;
 		lru_gen_shrink_lruvec(lruvec, sc);
 		return;
 	}

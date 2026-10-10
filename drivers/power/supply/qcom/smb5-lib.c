@@ -8962,20 +8962,24 @@ static void typec_sink_insertion(struct smb_charger *chg)
 			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 500000);
 		vote(chg->usb_icl_votable, OTG_VOTER, false, 0);
 		power_supply_changed(chg->batt_psy);
+	} else if (usb_present) {
+		vote(chg->usb_icl_votable, OTG_VOTER, false, 0);
 	} else {
 		vote(chg->usb_icl_votable, OTG_VOTER, true, 0);
 	}
 #endif
 
-	typec_src_fault_condition_cfg(chg, true);
-	rc = smblib_set_charge_param(chg, &chg->param.freq_switcher,
-					chg->chg_freq.freq_above_otg_threshold);
-	if (rc < 0)
-		dev_err(chg->dev, "Error in setting freq_boost rc=%d\n", rc);
+	if (!usb_present) {
+		typec_src_fault_condition_cfg(chg, true);
+		rc = smblib_set_charge_param(chg, &chg->param.freq_switcher,
+						chg->chg_freq.freq_above_otg_threshold);
+		if (rc < 0)
+			dev_err(chg->dev, "Error in setting freq_boost rc=%d\n", rc);
 
-	if (chg->use_extcon) {
-		smblib_notify_usb_host(chg, true);
-		chg->otg_present = true;
+		if (chg->use_extcon) {
+			smblib_notify_usb_host(chg, true);
+			chg->otg_present = true;
+		}
 	}
 
 	if (!chg->pr_swap_in_progress)
@@ -9107,6 +9111,7 @@ static void typec_src_removal(struct smb_charger *chg)
 	vote(chg->usb_icl_votable, HVDCP2_ICL_VOTER, false, 0);
 	vote(chg->usb_icl_votable, CHG_TERMINATION_VOTER, false, 0);
 	vote(chg->usb_icl_votable, THERMAL_THROTTLE_VOTER, false, 0);
+	vote(chg->usb_icl_votable, JEITA_VOTER, false, 0);
 #ifdef CONFIG_MACH_XIAOMI_NABU
 	vote(chg->usb_icl_votable, QC3P5_VOTER, false, 0);
 #endif
@@ -9456,6 +9461,7 @@ irqreturn_t typec_attach_detach_irq_handler(int irq, void *data)
 	u8 stat;
 	bool attached = false;
 	int rc;
+	union power_supply_propval pval = {0, };
 
 	smblib_dbg(chg, PR_INTERRUPT, "IRQ: %s\n", irq_data->name);
 
@@ -9483,11 +9489,16 @@ irqreturn_t typec_attach_detach_irq_handler(int irq, void *data)
 			return IRQ_HANDLED;
 		}
 
+		/* Check if external VBUS is present from a charger or PC */
+		rc = smblib_get_prop_usb_present(chg, &pval);
+		if (rc < 0)
+			pval.intval = 0;
+
 		if (smblib_get_prop_dfp_mode(chg) ==
 				POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER) {
 			chg->sink_src_mode = AUDIO_ACCESS_MODE;
 			typec_ra_ra_insertion(chg);
-		} else if (stat & SNK_SRC_MODE_BIT) {
+		} else if ((stat & SNK_SRC_MODE_BIT) && !pval.intval) {
 			if (smblib_src_lpd(chg))
 				return IRQ_HANDLED;
 			chg->sink_src_mode = SRC_MODE;

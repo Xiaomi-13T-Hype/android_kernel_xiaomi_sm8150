@@ -1845,7 +1845,8 @@ static void usbpd_set_state(struct usbpd *pd, enum usbpd_state next_state)
 			if (!ret) {
 				usbpd_dbg(&pd->dev, "type:%d\n", val.intval);
 				if (val.intval == POWER_SUPPLY_TYPE_USB ||
-					val.intval == POWER_SUPPLY_TYPE_USB_CDP)
+					val.intval == POWER_SUPPLY_TYPE_USB_CDP ||
+					val.intval == POWER_SUPPLY_TYPE_USB_PD)
 					start_usb_peripheral(pd);
 			}
 		}
@@ -3744,7 +3745,8 @@ static int psy_changed(struct notifier_block *nb, unsigned long evt, void *ptr)
 
 		if (val.intval == POWER_SUPPLY_TYPE_USB ||
 			val.intval == POWER_SUPPLY_TYPE_USB_CDP ||
-			val.intval == POWER_SUPPLY_TYPE_USB_FLOAT) {
+			val.intval == POWER_SUPPLY_TYPE_USB_FLOAT ||
+			val.intval == POWER_SUPPLY_TYPE_USB_PD) {
 			usbpd_dbg(&pd->dev, "typec mode:%d type:%d\n",
 				typec_mode, val.intval);
 			pd->typec_mode = typec_mode;
@@ -3843,6 +3845,12 @@ static int psy_changed(struct notifier_block *nb, unsigned long evt, void *ptr)
 		usbpd_info(&pd->dev, "Type-C Sink%s connected\n",
 				typec_mode == POWER_SUPPLY_TYPEC_SINK ?
 					"" : " (powered)");
+
+		if (pd->vbus_present) {
+			usbpd_info(&pd->dev, "VBUS present on powered cable, operating as Sink\n");
+			pd->current_pr = PR_SINK;
+			break;
+		}
 
 		if (pd->current_pr == PR_SRC)
 			return 0;

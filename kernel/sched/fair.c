@@ -1025,6 +1025,12 @@ found:
 	if (!best || (curr && entity_before(curr, best)))
 		best = curr;
 
+	if (unlikely(!best)) {
+		best = __pick_first_entity(cfs_rq);
+		if (!best)
+			best = curr;
+	}
+
 	return best;
 }
 
@@ -1275,8 +1281,8 @@ static void update_curr(struct cfs_rq *cfs_rq)
 	curr->vruntime += calc_delta_fair(delta_exec, curr);
 	if (sched_feat(EEVDF))
 		resched = update_deadline(cfs_rq, curr);
-	else
-		update_min_vruntime(cfs_rq);
+
+	update_min_vruntime(cfs_rq);
 
 	if (entity_is_task(curr)) {
 		struct task_struct *curtask = task_of(curr);
@@ -1289,7 +1295,7 @@ static void update_curr(struct cfs_rq *cfs_rq)
 	account_cfs_rq_runtime(cfs_rq, delta_exec);
 
 	if (sched_feat(EEVDF)) {
-		if (cfs_rq->nr_running > 1 && (resched || !protect_slice(curr))) {
+		if (cfs_rq->nr_running > 1 && resched) {
 			resched_curr(rq_of(cfs_rq));
 			clear_buddies(cfs_rq, curr);
 		}
@@ -4334,10 +4340,12 @@ place_entity(struct cfs_rq *cfs_rq, struct sched_entity *se, int initial)
 				load += avg_vruntime_weight(cfs_rq, curr->load.weight);
 
 			weight = avg_vruntime_weight(cfs_rq, se->load.weight);
-			lag *= load + weight;
 			if (WARN_ON_ONCE(!load))
 				load = 1;
-			lag = div64_long(lag, load);
+			if (lag >= 0)
+				lag = mul_u64_u32_div(lag, load + weight, load);
+			else
+				lag = -mul_u64_u32_div(-lag, load + weight, load);
 
 			if (weight > load)
 				update_zero = true;

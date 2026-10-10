@@ -949,20 +949,6 @@ static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
 		return PM_ALGO_RET_SLOWLY_CHARGING;
 	}
 
-	{
-		static int cp_stall_count = 0;
-		if (ibus_total < 250 || pdpm->cp.ibat_curr < 0) {
-			if (++cp_stall_count >= 6) {
-				pr_warn("Charge Pump stalled (ibus=%d mA, ibat=%d mA), switching fallback\n",
-					ibus_total, pdpm->cp.ibat_curr);
-				cp_stall_count = 0;
-				return PM_ALGO_RET_OTHER_FAULT;
-			}
-		} else {
-			cp_stall_count = 0;
-		}
-	}
-
 	/*check overcharge when it is cool*/
 	if (pdpm->cp.vbat_volt > pm_config.bat_volt_lp_lmt &&
 	    is_cool_charge(pdpm)) {
