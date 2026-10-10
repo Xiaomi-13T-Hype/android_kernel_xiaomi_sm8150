@@ -949,6 +949,20 @@ static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
 		return PM_ALGO_RET_SLOWLY_CHARGING;
 	}
 
+	{
+		static int cp_stall_count = 0;
+		if (ibus_total < 250 || pdpm->cp.ibat_curr < 0) {
+			if (++cp_stall_count >= 6) {
+				pr_warn("Charge Pump stalled (ibus=%d mA, ibat=%d mA), switching fallback\n",
+					ibus_total, pdpm->cp.ibat_curr);
+				cp_stall_count = 0;
+				return PM_ALGO_RET_OTHER_FAULT;
+			}
+		} else {
+			cp_stall_count = 0;
+		}
+	}
+
 	/*check overcharge when it is cool*/
 	if (pdpm->cp.vbat_volt > pm_config.bat_volt_lp_lmt &&
 	    is_cool_charge(pdpm)) {
@@ -990,10 +1004,6 @@ static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
 
 	if (pdpm->request_voltage > pdpm->apdo_max_volt)
 		pdpm->request_voltage = pdpm->apdo_max_volt;
-
-	/*if (pdpm->adapter_voltage > 0
-			&& pdpm->request_voltage > pdpm->adapter_voltage + 500)
-		pdpm->request_voltage = pdpm->adapter_voltage + 500; */
 
 	return PM_ALGO_RET_OK;
 }
@@ -1055,7 +1065,7 @@ static int usbpd_pm_sm(struct usbpd_pm *pdpm)
 					charging with switch charger\n",
 				pdpm->cp.vbat_volt);
 			usbpd_pm_move_state(pdpm, PD_PM_STATE_FC2_EXIT);
-			if (pm_config.bat_volt_lp_lmt < BAT_VOLT_LOOP_LMT)
+			if (capacity < 95)
 				recover = true;
 		} else if (!pd_get_bms_digest_verified(pdpm)) {
 			pr_info("bms digest is not verified, waiting...\n");
@@ -1186,6 +1196,8 @@ static int usbpd_pm_sm(struct usbpd_pm *pdpm)
 		} else if (ret == PM_ALGO_RET_OTHER_FAULT ||
 			   ret == PM_ALGO_RET_TAPER_DONE) {
 			pr_info("Move to switch charging:%d\n", ret);
+			if (capacity < 95)
+				recover = true;
 			usbpd_pm_move_state(pdpm, PD_PM_STATE_FC2_EXIT);
 			break;
 		} else if (ret == PM_ALGO_RET_CHG_DISABLED) {
