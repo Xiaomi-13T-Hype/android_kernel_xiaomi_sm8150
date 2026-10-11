@@ -48,7 +48,7 @@
 #define BUS_OVP_ALARM_THRESHOLD 9500
 #define APDO_MAX_VOLT 11000
 
-#define BUS_VOLT_INIT_UP 400
+#define BUS_VOLT_INIT_UP 200
 
 #define BAT_VOLT_LOOP_LMT BATT_MAX_CHG_VOLT
 #define BAT_CURR_LOOP_LMT BATT_FAST_CHG_CURR
@@ -827,6 +827,7 @@ static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
 	int step_vbat = 0;
 	int step_ibus = 0;
 	int step_ibat = 0;
+	int step_vbus = 0;
 	int step_bat_reg = 0;
 	int ibus_total = 0;
 	int effective_fcc_val = 0;
@@ -915,8 +916,14 @@ static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
 	else
 		step_bat_reg = pm_config.fc2_steps;
 
-	pr_info("step_bat_reg:%d\n", step_bat_reg);
-	sw_ctrl_steps = min(min(step_vbat, step_ibus), step_ibat);
+	/* bus voltage headroom loop: prevent Vbus at chip from exceeding 2*Vbat by >350mV (BQ25970 VDROP limit: 400mV) */
+	if (pdpm->cp.vbus_volt > pdpm->cp.vbat_volt * 2 + 350)
+		step_vbus = -pm_config.fc2_steps;
+	else
+		step_vbus = pm_config.fc2_steps;
+
+	pr_info("step_bat_reg:%d, step_vbus:%d\n", step_bat_reg, step_vbus);
+	sw_ctrl_steps = min(min(min(step_vbat, step_ibus), step_ibat), step_vbus);
 	sw_ctrl_steps = min(sw_ctrl_steps, step_bat_reg);
 
 	pr_info("sw_ctrl_steps:%d\n", sw_ctrl_steps);
@@ -966,6 +973,20 @@ static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
 		return PM_ALGO_RET_SLOWLY_CHARGING;
 	}
 
+	{
+		static int cp_stall_count = 0;
+		if (ibus_total < 250 || pdpm->cp.ibat_curr < 0) {
+			if (++cp_stall_count >= 8) {
+				pr_warn("Charge Pump stalled (ibus=%d mA, ibat=%d mA), switching fallback\n",
+					ibus_total, pdpm->cp.ibat_curr);
+				cp_stall_count = 0;
+				return PM_ALGO_RET_OTHER_FAULT;
+			}
+		} else {
+			cp_stall_count = 0;
+		}
+	}
+
 	/*check overcharge when it is cool*/
 	if (pdpm->cp.vbat_volt > pm_config.bat_volt_lp_lmt &&
 	    is_cool_charge(pdpm)) {
@@ -1009,7 +1030,7 @@ static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
 		pdpm->request_voltage = pdpm->apdo_max_volt;
 
 	if (pdpm->cp.vbat_volt > 0) {
-		int max_vbus_allowed = pdpm->cp.vbat_volt * 2 + 1800;
+		int max_vbus_allowed = pdpm->cp.vbat_volt * 2 + 800;
 		if (pdpm->request_voltage > max_vbus_allowed)
 			pdpm->request_voltage = max_vbus_allowed;
 	}
@@ -1131,7 +1152,7 @@ static int usbpd_pm_sm(struct usbpd_pm *pdpm)
 					 pdpm->request_voltage * 1000,
 					 pdpm->request_current * 1000);
 		} else if (pdpm->cp.vbus_volt >
-			   (pdpm->cp.vbat_volt * 2 + BUS_VOLT_INIT_UP + 200)) {
+			   (pdpm->cp.vbat_volt * 2 + BUS_VOLT_INIT_UP + 100)) {
 			tune_vbus_retry++;
 			pdpm->request_voltage -= STEP_MV;
 			usbpd_select_pdo(pdpm->pd, pdpm->apdo_selected_pdo,
@@ -1172,12 +1193,7 @@ static int usbpd_pm_sm(struct usbpd_pm *pdpm)
 		}
 
 		if (pdpm->cp.charge_enabled) {
-			if (pm_config.fc2_disable_sw) {
-				if (pdpm->sw.charge_enabled) {
-					usbpd_pm_enable_sw(pdpm, false);
-					usbpd_pm_update_sw_status(pdpm);
-				}
-			}
+			/* Keep SW active during transition to avoid sudden Vbat drop */
 			if ((pm_config.cp_sec_enable &&
 			     pdpm->cp_sec.charge_enabled) ||
 			    !pm_config.cp_sec_enable) {
@@ -1196,6 +1212,19 @@ static int usbpd_pm_sm(struct usbpd_pm *pdpm)
 		}
 #endif
 		usbpd_update_pps_status(pdpm);
+
+		/* Dynamic SW charger management: only disable SW once CP carries real load */
+		if (pdpm->cp.ibus_curr >= 800) {
+			if (pm_config.fc2_disable_sw && pdpm->sw.charge_enabled) {
+				usbpd_pm_enable_sw(pdpm, false);
+				usbpd_pm_update_sw_status(pdpm);
+			}
+		} else if (pdpm->cp.ibus_curr < 300) {
+			if (!pdpm->sw.charge_enabled || pdpm->sw.charge_limited) {
+				usbpd_pm_enable_sw(pdpm, true);
+				usbpd_pm_update_sw_status(pdpm);
+			}
+		}
 
 		ret = usbpd_pm_fc2_charge_algo(pdpm);
 		if (ret == PM_ALGO_RET_THERM_FAULT) {
