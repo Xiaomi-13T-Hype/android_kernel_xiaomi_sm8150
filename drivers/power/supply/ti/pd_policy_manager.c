@@ -42,7 +42,7 @@
 #define PD_SRC_PDO_TYPE_VARIABLE 2
 #define PD_SRC_PDO_TYPE_AUGMENTED 3
 
-#define BATT_MAX_CHG_VOLT 4450
+#define BATT_MAX_CHG_VOLT 4475
 #define BATT_FAST_CHG_CURR 6500
 #define BUS_OVP_THRESHOLD 12000
 #define BUS_OVP_ALARM_THRESHOLD 9500
@@ -767,13 +767,16 @@ static void usbpd_pm_evaluate_src_caps(struct usbpd_pm *pdpm)
 	for (i = 0; i < PDO_MAX_NUM; i++) {
 		if (pdpm->pdo[i].type == PD_SRC_PDO_TYPE_AUGMENTED &&
 		    pdpm->pdo[i].pps && pdpm->pdo[i].pos) {
-			if (pdpm->pdo[i].max_volt_mv >= pdpm->apdo_max_volt &&
-			    pdpm->pdo[i].curr_ma >= pdpm->apdo_max_curr &&
+			if (pdpm->pdo[i].curr_ma >= pm_config.min_adapter_curr_required &&
 			    pdpm->pdo[i].max_volt_mv <= APDO_MAX_VOLT) {
-				pdpm->apdo_max_volt = pdpm->pdo[i].max_volt_mv;
-				pdpm->apdo_max_curr = pdpm->pdo[i].curr_ma;
-				pdpm->apdo_selected_pdo = pdpm->pdo[i].pos;
-				pdpm->pps_supported = true;
+				if (pdpm->pdo[i].max_volt_mv > pdpm->apdo_max_volt ||
+				    (pdpm->pdo[i].max_volt_mv == pdpm->apdo_max_volt &&
+				     pdpm->pdo[i].curr_ma > pdpm->apdo_max_curr)) {
+					pdpm->apdo_max_volt = pdpm->pdo[i].max_volt_mv;
+					pdpm->apdo_max_curr = pdpm->pdo[i].curr_ma;
+					pdpm->apdo_selected_pdo = pdpm->pdo[i].pos;
+					pdpm->pps_supported = true;
+				}
 			}
 		}
 	}
