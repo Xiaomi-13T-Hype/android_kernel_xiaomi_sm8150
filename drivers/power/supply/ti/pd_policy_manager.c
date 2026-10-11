@@ -835,6 +835,7 @@ static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
 		curr_ibus_limit += pm_config.bus_curr_compensate;
 		/* curr_ibus_limit should compare with apdo_max_curr here*/
 		curr_ibus_limit = min(curr_ibus_limit, pdpm->apdo_max_curr);
+		curr_ibus_limit = max(curr_ibus_limit, 1500);
 		pr_debug("curr_ibus_limit:%d\n", curr_ibus_limit);
 	}
 
@@ -1044,6 +1045,7 @@ static int usbpd_pm_sm(struct usbpd_pm *pdpm)
 			curr_fcc_lmt = min(pm_config.bat_curr_lp_lmt,
 					   effective_fcc_val);
 			curr_ibus_lmt = curr_fcc_lmt >> 1;
+			curr_ibus_lmt = max(curr_ibus_lmt, 1500);
 			pr_info("curr_ibus_lmt:%d\n", curr_ibus_lmt);
 		}
 
