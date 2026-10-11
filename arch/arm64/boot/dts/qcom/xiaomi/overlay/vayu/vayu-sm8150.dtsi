@@ -64,7 +64,7 @@ And public attribution of xiaomi platforms(like J20S and so and)
 &pm8150b_charger {
 	qcom,sec-charger-config = <0>;
 	qcom,usb-icl-ua = <3000000>;
-	qcom,fcc-max-ua = <5900000>;
+	qcom,fcc-max-ua = <6500000>;
 	qcom,fv-max-uv = <4475000>;
 	qcom,non-fcc-fv-max-uv = <4450000>;
 	//qcom,chg-warm-th= <450>;
@@ -103,11 +103,11 @@ And public attribution of xiaomi platforms(like J20S and so and)
 				   2200000 2100000 1800000 1600000 1400000 1200000 1000000
 				   750000 750000>;
 	qcom,thermal-fcc-pps-cp
-				= <6200000 6200000 6000000 6000000 5900000 5900000 5800000
+				= <6500000 6500000 6500000 6500000 6200000 6000000 5800000
 				   5800000 5600000 5500000 5400000 5200000 5000000 5000000
 				   4500000 4000000>;
 	qcom,thermal-fcc-pps-bq
-				= <6200000 6200000 6000000 6000000 5900000 5900000 5800000
+				= <6500000 6500000 6500000 6500000 6200000 6000000 5800000
 				   5800000 5600000 5500000 5400000 5200000 5000000 5000000
 				   4500000 4000000>;
 	qcom,thermal-fcc-qc3-cp
@@ -243,9 +243,9 @@ And public attribution of xiaomi platforms(like J20S and so and)
 		status = "ok";
 		mi,pd-bat-volt-max = <4500>;
 		mi,pd-ffc-bat-volt-max = <4480>;
-		mi,pd-bat-curr-max = <6200>;
+		mi,pd-bat-curr-max = <6500>;
 		mi,pd-bus-volt-max = <12000>;
-		mi,pd-bus-curr-max = <3100>;
+		mi,pd-bus-curr-max = <3500>;
 		mi,pd-non-ffc-bat-volt-max = <4450>;
 		mi,pd-bus-curr-compensate  = <0>;
 		mi,pd-battery-warm-th = <515>;

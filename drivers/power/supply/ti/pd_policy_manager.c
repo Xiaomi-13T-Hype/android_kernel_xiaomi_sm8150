@@ -43,7 +43,7 @@
 #define PD_SRC_PDO_TYPE_AUGMENTED 3
 
 #define BATT_MAX_CHG_VOLT 4450
-#define BATT_FAST_CHG_CURR 6000
+#define BATT_FAST_CHG_CURR 6500
 #define BUS_OVP_THRESHOLD 12000
 #define BUS_OVP_ALARM_THRESHOLD 9500
 #define APDO_MAX_VOLT 11000
@@ -387,14 +387,19 @@ static int usbpd_get_effective_fcc_val(struct usbpd_pm *pdpm)
 	effective_fcc_val = effective_fcc_val / 1000;
 
 	/*
-	 * Guarantee full 33W Turbo Charge (5000-5900 mA) when battery temp
-	 * is within safe operational range (JEITA normal < 45C).
-	 * Do not allow broken thermal daemons or unrelated voters to choke
-	 * charge pump down to 1000 mA.
+	 * Allow full 6500 mA (up to 3.25A on PPS bus) up to 47.0°C battery temp.
+	 * If battery temp exceeds 47.0°C, scale down gracefully to 5000 mA.
+	 * If exceeds 49.0°C, let standard JEITA take over.
 	 */
-	if (effective_fcc_val < 5000 && !pdpm->is_temp_out_fc2_range &&
-	    pdpm->cp.bat_temp < 450)
-		effective_fcc_val = 5900;
+	if (!pdpm->is_temp_out_fc2_range) {
+		if (pdpm->cp.bat_temp <= 470) {
+			if (effective_fcc_val < 6500)
+				effective_fcc_val = 6500;
+		} else if (pdpm->cp.bat_temp <= 490) {
+			if (effective_fcc_val < 5000)
+				effective_fcc_val = 5000;
+		}
+	}
 
 	pr_info("effective_fcc_val: %d\n", effective_fcc_val);
 	return effective_fcc_val;
@@ -1312,7 +1317,7 @@ static void usbpd_pm_disconnect(struct usbpd_pm *pdpm)
 	pdpm->is_temp_out_fc2_range = false;
 	pdpm->apdo_selected_pdo = 0;
 	memset(&pdpm->pdo, 0, sizeof(pdpm->pdo));
-	pm_config.bat_curr_lp_lmt = pdpm->bat_curr_max;
+	pm_config.bat_curr_lp_lmt = max(pdpm->bat_curr_max, 6500);
 	if (!pdpm->sw.charge_enabled || pdpm->sw.charge_limited) {
 		usbpd_pm_enable_sw(pdpm, true);
 		usbpd_pm_check_sw_enabled(pdpm);
@@ -1483,7 +1488,7 @@ static int pd_policy_parse_dt(struct usbpd_pm *pdpm)
 	if (rc < 0)
 		pr_err("pd-bat-curr-max property missing, use default val\n");
 	else
-		pm_config.bat_curr_lp_lmt = pdpm->bat_curr_max;
+		pm_config.bat_curr_lp_lmt = max(pdpm->bat_curr_max, 6500);
 	pr_info("pm_config.bat_curr_lp_lmt:%d\n", pm_config.bat_curr_lp_lmt);
 
 	rc = of_property_read_u32(node, "mi,pd-bus-volt-max",
