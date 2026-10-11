@@ -385,6 +385,17 @@ static int usbpd_get_effective_fcc_val(struct usbpd_pm *pdpm)
 
 	effective_fcc_val = get_effective_result(pdpm->fcc_votable);
 	effective_fcc_val = effective_fcc_val / 1000;
+
+	/*
+	 * Guarantee full 33W Turbo Charge (5000-5900 mA) when battery temp
+	 * is within safe operational range (JEITA normal < 45C).
+	 * Do not allow broken thermal daemons or unrelated voters to choke
+	 * charge pump down to 1000 mA.
+	 */
+	if (effective_fcc_val < 5000 && !pdpm->is_temp_out_fc2_range &&
+	    pdpm->cp.bat_temp < 450)
+		effective_fcc_val = 5900;
+
 	pr_info("effective_fcc_val: %d\n", effective_fcc_val);
 	return effective_fcc_val;
 }
