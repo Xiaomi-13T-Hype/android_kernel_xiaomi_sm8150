@@ -72,7 +72,7 @@ static struct pdpm_config pm_config = {
 	.bat_curr_lp_lmt = BAT_CURR_LOOP_LMT + 1000,
 	.bus_volt_lp_lmt = BUS_VOLT_LOOP_LMT,
 	.bus_curr_lp_lmt = BAT_CURR_LOOP_LMT >> 1,
-	.bus_curr_compensate = 0,
+	.bus_curr_compensate = 100,
 
 	.fc2_taper_current = 2300,
 	.fc2_steps = 1,
@@ -827,7 +827,6 @@ static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
 	int step_vbat = 0;
 	int step_ibus = 0;
 	int step_ibat = 0;
-	int step_vbus = 0;
 	int step_bat_reg = 0;
 	int ibus_total = 0;
 	int effective_fcc_val = 0;
@@ -916,14 +915,8 @@ static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
 	else
 		step_bat_reg = pm_config.fc2_steps;
 
-	/* bus voltage headroom loop: prevent Vbus at chip from exceeding 2*Vbat by >350mV (BQ25970 VDROP limit: 400mV) */
-	if (pdpm->cp.vbus_volt > pdpm->cp.vbat_volt * 2 + 350)
-		step_vbus = -pm_config.fc2_steps;
-	else
-		step_vbus = pm_config.fc2_steps;
-
-	pr_info("step_bat_reg:%d, step_vbus:%d\n", step_bat_reg, step_vbus);
-	sw_ctrl_steps = min(min(min(step_vbat, step_ibus), step_ibat), step_vbus);
+	pr_info("step_bat_reg:%d\n", step_bat_reg);
+	sw_ctrl_steps = min(min(step_vbat, step_ibus), step_ibat);
 	sw_ctrl_steps = min(sw_ctrl_steps, step_bat_reg);
 
 	pr_info("sw_ctrl_steps:%d\n", sw_ctrl_steps);
@@ -1029,12 +1022,6 @@ static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
 
 	if (pdpm->request_voltage > pdpm->apdo_max_volt)
 		pdpm->request_voltage = pdpm->apdo_max_volt;
-
-	if (pdpm->cp.vbat_volt > 0) {
-		int max_vbus_allowed = pdpm->cp.vbat_volt * 2 + 1600;
-		if (pdpm->request_voltage > max_vbus_allowed)
-			pdpm->request_voltage = max_vbus_allowed;
-	}
 
 	return PM_ALGO_RET_OK;
 }
