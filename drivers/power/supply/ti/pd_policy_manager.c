@@ -975,9 +975,10 @@ static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
 
 	{
 		static int cp_stall_count = 0;
-		if (ibus_total < 250 || pdpm->cp.ibat_curr < 0) {
-			if (++cp_stall_count >= 8) {
-				pr_warn("Charge Pump stalled (ibus=%d mA, ibat=%d mA), switching fallback\n",
+		/* Only consider CP stalled if the battery is actively DISCHARGING into the system */
+		if (pdpm->cp.ibat_curr < -200 && ibus_total < 250) {
+			if (++cp_stall_count >= 20) {
+				pr_warn("Charge Pump discharge detected (ibus=%d mA, ibat=%d mA), switching fallback\n",
 					ibus_total, pdpm->cp.ibat_curr);
 				cp_stall_count = 0;
 				return PM_ALGO_RET_OTHER_FAULT;
@@ -1061,8 +1062,10 @@ static int usbpd_pm_sm(struct usbpd_pm *pdpm)
 	static bool stop_sw;
 	static bool recover;
 	int effective_fcc_val = 0;
-	int thermal_level = 0, capacity;
+	int thermal_level = 0, capacity = 0;
 	static int curr_fcc_lmt, curr_ibus_lmt, retry_count;
+
+	pd_get_batt_capacity(pdpm, &capacity);
 
 	switch (pdpm->state) {
 	case PD_PM_STATE_ENTRY:
