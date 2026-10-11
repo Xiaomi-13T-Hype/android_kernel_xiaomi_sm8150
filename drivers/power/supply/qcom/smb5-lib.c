@@ -8651,21 +8651,34 @@ static void update_sw_icl_max(struct smb_charger *chg, int pst)
 			 * enumerate to check if this is a SDP and
 			 * appropriately set the current.
 			 */
-#ifdef CONFIG_MACH_XIAOMI_SM8150
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER,
+					true, FLOAT_CHARGER_UA);
+#elif defined(CONFIG_MACH_XIAOMI_SM8150)
 		    if (!chg->recheck_charger)
-#endif
 			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER,
 					true, SDP_100_MA);
-#ifdef CONFIG_MACH_XIAOMI_SM8150
 		    else
 				vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER,
 						true, FLOAT_CHARGER_UA);
+#else
+			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER,
+					true, SDP_100_MA);
 #endif
 		break;
 	case POWER_SUPPLY_TYPE_UNKNOWN:
 	default:
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+		if (val.intval)
+			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
+						USBIN_500MA);
+		else
+			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
+						SDP_100_MA);
+#else
 		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
 					SDP_100_MA);
+#endif
 		break;
 	}
 }

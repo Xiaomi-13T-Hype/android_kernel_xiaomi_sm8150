@@ -3952,12 +3952,14 @@ static int usbpd_dr_set_property(struct dual_role_phy_instance *dual_role,
 		set_power_role(pd, PR_NONE);
 
 		/* wait until it takes effect */
+		wait_count = 25;
 		while (pd->forced_pr != POWER_SUPPLY_TYPEC_PR_NONE &&
 				--wait_count)
 			msleep(20);
 
 		if (!wait_count) {
-			usbpd_err(&pd->dev, "setting mode timed out\n");
+			usbpd_err(&pd->dev, "setting mode timed out (disconnect)\n");
+			pd->forced_pr = POWER_SUPPLY_TYPEC_PR_NONE;
 			/* Setting it to DRP. HW can figure out new mode */
 			value.intval = POWER_SUPPLY_TYPEC_PR_DUAL;
 			power_supply_set_property(pd->usb_psy,
@@ -3966,12 +3968,12 @@ static int usbpd_dr_set_property(struct dual_role_phy_instance *dual_role,
 		}
 
 		/* if we cannot have a valid connection, fallback to old role */
-		wait_count = 5;
-		while (pd->current_pr == PR_NONE && --wait_count)
-			msleep(300);
+		wait_count = 10;
+		while (pd->current_pr == PR_NONE && !pd->vbus_present && --wait_count)
+			msleep(200);
 
-		if (!wait_count) {
-			usbpd_err(&pd->dev, "setting mode timed out\n");
+		if (!wait_count && !pd->vbus_present) {
+			usbpd_err(&pd->dev, "setting mode timed out (connect)\n");
 			/* Setting it to DRP. HW can figure out new mode */
 			value.intval = POWER_SUPPLY_TYPEC_PR_DUAL;
 			power_supply_set_property(pd->usb_psy,
