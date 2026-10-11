@@ -1031,7 +1031,7 @@ static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
 		pdpm->request_voltage = pdpm->apdo_max_volt;
 
 	if (pdpm->cp.vbat_volt > 0) {
-		int max_vbus_allowed = pdpm->cp.vbat_volt * 2 + 800;
+		int max_vbus_allowed = pdpm->cp.vbat_volt * 2 + 1600;
 		if (pdpm->request_voltage > max_vbus_allowed)
 			pdpm->request_voltage = max_vbus_allowed;
 	}
@@ -1217,12 +1217,12 @@ static int usbpd_pm_sm(struct usbpd_pm *pdpm)
 		usbpd_update_pps_status(pdpm);
 
 		/* Dynamic SW charger management: only disable SW once CP carries real load */
-		if (pdpm->cp.ibus_curr >= 800) {
+		if (pdpm->cp.ibus_curr >= 600) {
 			if (pm_config.fc2_disable_sw && pdpm->sw.charge_enabled) {
 				usbpd_pm_enable_sw(pdpm, false);
 				usbpd_pm_update_sw_status(pdpm);
 			}
-		} else if (pdpm->cp.ibus_curr < 300) {
+		} else if (pdpm->cp.ibus_curr < 200) {
 			if (!pdpm->sw.charge_enabled || pdpm->sw.charge_limited) {
 				usbpd_pm_enable_sw(pdpm, true);
 				usbpd_pm_update_sw_status(pdpm);
