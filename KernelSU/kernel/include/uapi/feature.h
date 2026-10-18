@@ -9,6 +9,8 @@ enum ksu_feature_id {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
     KSU_FEATURE_SELINUX_HIDE = 4,
 #endif
+    // 5 was webview_zygote_umount (v3.3.0), keep it unused so stale configs don't apply
+    KSU_FEATURE_SHELL_SU_ADB_ONLY = 6,
 
     KSU_FEATURE_MAX
 };

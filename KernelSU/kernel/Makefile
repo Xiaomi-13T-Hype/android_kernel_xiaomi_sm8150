@@ -41,9 +41,9 @@ $(shell cd $(KSU_SRC) 2>/dev/null && [ -f ../.git/shallow ] && $(GIT_BIN) fetch 
 
 GITHUB_API_BASE  := https://api.github.com/repos/$(REPO_OWNER)/$(REPO_NAME)
 KSU_GITHUB_VER   := $(shell $(CURL_BIN) -s "$(GITHUB_API_BASE)/releases/latest" 2>/dev/null | grep '"tag_name":' | sed -E 's/.*"v?([^"]+)".*/\1/')
-KSU_VERSION     := 40900
-VERSION_TAG     := 4.2.0
-KSU_VERSION_FULL := v4.2.0-SukiSU-Ultra
+KSU_VERSION     := 37186
+VERSION_TAG     := 4.2.1
+KSU_VERSION_FULL := v4.2.1-SukiSU-Ultra
 $(info -- $(REPO_NAME) version: $(KSU_VERSION) [$(KSU_VERSION_FULL)])
 
 ccflags-y += -DKSU_VERSION=$(KSU_VERSION)

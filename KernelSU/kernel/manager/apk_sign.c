@@ -7,7 +7,8 @@ static struct apk_sign_key {
     unsigned size;
     const char *sha256;
 } apk_sign_keys[] = {
-    { 0x35c, "947ae944f3de4ed4c21a7e4f7953ecf351bfa2b36239da37a34111ad29993eef" }, // SukiSU Ultra ONLY
+    { 0x338, "74e694af252f07a1e57ed4a97ee2cd4eff329510cf53feaad4532277e33063c3" }, // SukiSU Ultra Local Release
+    { 0x35c, "947ae944f3de4ed4c21a7e4f7953ecf351bfa2b36239da37a34111ad29993eef" }, // SukiSU Ultra Official
 };
 
 static struct sdesc *init_sdesc(struct crypto_shash *alg)
