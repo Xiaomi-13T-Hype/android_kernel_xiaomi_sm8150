@@ -1694,11 +1694,7 @@ static __latent_entropy struct task_struct *copy_process(
 {
 	int pidfd = -1, retval;
 	struct task_struct *p;
-<<<<<<< HEAD
-=======
 	u64 clone_flags = args->flags;
-	struct file *pidfile = NULL;
->>>>>>> 5bcea8a06984d (BACKPORT: fork: add clone3)
 
 	if ((clone_flags & (CLONE_NEWNS|CLONE_FS)) == (CLONE_NEWNS|CLONE_FS))
 		return ERR_PTR(-EINVAL);
@@ -1952,20 +1948,7 @@ static __latent_entropy struct task_struct *copy_process(
 			goto bad_fork_free_pid;
 
 		pidfd = retval;
-<<<<<<< HEAD
-		retval = put_user(pidfd, parent_tidptr);
-=======
-
-		pidfile = anon_inode_getfile("[pidfd]", &pidfd_fops, pid,
-					      O_RDWR | O_CLOEXEC);
-		if (IS_ERR(pidfile)) {
-			put_unused_fd(pidfd);
-			goto bad_fork_free_pid;
-		}
-		get_pid(pid);	/* held by pidfile now */
-
 		retval = put_user(pidfd, args->pidfd);
->>>>>>> 5bcea8a06984d (BACKPORT: fork: add clone3)
 		if (retval)
 			goto bad_fork_put_pidfd;
 	}
@@ -2231,12 +2214,9 @@ struct task_struct *fork_idle(int cpu)
  */
 long _do_fork(struct kernel_clone_args *args)
 {
-<<<<<<< HEAD
-=======
 	u64 clone_flags = args->flags;
 	struct completion vfork;
 	struct pid *pid;
->>>>>>> 5bcea8a06984d (BACKPORT: fork: add clone3)
 	struct task_struct *p;
 	int trace = 0;
 	long nr;
