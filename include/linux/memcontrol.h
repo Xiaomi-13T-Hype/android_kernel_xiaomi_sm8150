@@ -63,6 +63,12 @@ struct mem_cgroup_reclaim_cookie {
 	unsigned int generation;
 };
 
+enum mem_cgroup_protection {
+	MEMCG_PROT_NONE,
+	MEMCG_PROT_LOW,
+	MEMCG_PROT_MIN,
+};
+
 #ifdef CONFIG_MEMCG
 
 #define MEM_CGROUP_ID_SHIFT	16
@@ -410,12 +416,6 @@ static inline struct mem_cgroup *parent_mem_cgroup(struct mem_cgroup *memcg)
 		return NULL;
 	return mem_cgroup_from_counter(memcg->memory.parent, memory);
 }
-
-enum mem_cgroup_protection {
-	MEMCG_PROT_NONE,
-	MEMCG_PROT_LOW,
-	MEMCG_PROT_MIN,
-};
 
 static inline enum mem_cgroup_protection mem_cgroup_protected(struct mem_cgroup *root,
 							      struct mem_cgroup *memcg)

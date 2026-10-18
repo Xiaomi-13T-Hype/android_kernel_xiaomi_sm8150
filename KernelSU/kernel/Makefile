@@ -27,7 +27,6 @@ VERSION_BASE    := 40000
 VERSION_OFFSET  := 2815
 
 GIT_BIN  := /usr/bin/env PATH="$$PATH":/usr/bin:/usr/local/bin git
-CURL_BIN := /usr/bin/env PATH="$$PATH":/usr/bin:/usr/local/bin curl
 
 KSU_SRC := $(if $(filter $(srctree),$(src)),$(src),$(srctree)/$(src))
 KSU_SRC := $(if $(wildcard $(KSU_SRC)/../.git),$(KSU_SRC),$(MDIR))
@@ -39,8 +38,6 @@ git_latest_tag   = $(shell cd $(KSU_SRC) && $(GIT_BIN) describe --tags --abbrev=
 
 $(shell cd $(KSU_SRC) 2>/dev/null && [ -f ../.git/shallow ] && $(GIT_BIN) fetch --unshallow 2>/dev/null)
 
-GITHUB_API_BASE  := https://api.github.com/repos/$(REPO_OWNER)/$(REPO_NAME)
-KSU_GITHUB_VER   := $(shell $(CURL_BIN) -s "$(GITHUB_API_BASE)/releases/latest" 2>/dev/null | grep '"tag_name":' | sed -E 's/.*"v?([^"]+)".*/\1/')
 KSU_VERSION     := 40994
 VERSION_TAG     := 4.2.1
 KSU_VERSION_FULL := v4.2.1-SukiSU-Ultra
