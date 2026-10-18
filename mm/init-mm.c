@@ -28,5 +28,8 @@ struct mm_struct init_mm = {
 	.arg_lock	=  __SPIN_LOCK_UNLOCKED(init_mm.arg_lock),
 	.mmlist		= LIST_HEAD_INIT(init_mm.mmlist),
 	.user_ns	= &init_user_ns,
+#ifdef CONFIG_LRU_GEN
+	.lru_gen.list	= LIST_HEAD_INIT(init_mm.lru_gen.list),
+#endif
 	INIT_MM_CONTEXT(init_mm)
 };

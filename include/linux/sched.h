@@ -498,13 +498,23 @@ struct sched_entity {
 	/* For load-balancing: */
 	struct load_weight		load;
 	struct rb_node			run_node;
+	u64				deadline;
+	u64				min_vruntime;
+	u64				min_slice;
+	u64				max_slice;
+
 	struct list_head		group_node;
 	unsigned int			on_rq;
+	unsigned char			rel_deadline;
+	unsigned char			custom_slice;
 
 	u64				exec_start;
 	u64				sum_exec_runtime;
 	u64				vruntime;
 	u64				prev_sum_exec_runtime;
+	s64				vlag;
+	u64				vprot;
+	u64				slice;
 
 	u64				nr_migrations;
 
@@ -885,6 +895,10 @@ struct task_struct {
 #ifndef CONFIG_SLOB
 	unsigned			memcg_kmem_skip_account:1;
 #endif
+#endif
+#ifdef CONFIG_LRU_GEN
+	/* whether the LRU algorithm may apply to this access */
+	unsigned			in_lru_fault:1;
 #endif
 #ifdef CONFIG_COMPAT_BRK
 	unsigned			brk_randomized:1;

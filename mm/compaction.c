@@ -23,6 +23,7 @@
 #include <linux/freezer.h>
 #include <linux/page_owner.h>
 #include <linux/psi.h>
+#include <linux/oom.h>
 #include "internal.h"
 
 #ifdef CONFIG_COMPACTION
@@ -885,7 +886,7 @@ isolate_migratepages_block(struct compact_control *cc, unsigned long low_pfn,
 		VM_BUG_ON_PAGE(PageCompound(page), page);
 
 		/* Successfully isolated */
-		del_page_from_lru_list(page, lruvec, page_lru(page));
+		del_page_from_lru_list(page, lruvec);
 		inc_node_page_state(page,
 				NR_ISOLATED_ANON + page_is_file_cache(page));
 
@@ -1347,6 +1348,9 @@ static enum compact_result __compact_finished(struct zone *zone,
 		else
 			return COMPACT_PARTIAL_SKIPPED;
 	}
+
+	if (task_is_critical())
+		return COMPACT_SUCCESS;
 
 	if (is_via_compact_memory(cc->order))
 		return COMPACT_CONTINUE;

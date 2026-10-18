@@ -280,7 +280,7 @@ module_param_named(
 );
 
 #if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
-static bool disable_thermal = false;
+static bool disable_thermal = true;
 module_param_named(
 	disable_thermal, disable_thermal, bool, 0600
 );

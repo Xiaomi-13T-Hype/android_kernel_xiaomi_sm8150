@@ -1206,7 +1206,7 @@ static const struct ksu_ioctl_cmd_map ksu_ioctl_handlers[] = {
         .cmd = KSU_IOCTL_GET_FULL_VERSION,
         .name = "GET_FULL_VERSION",
         .handler = do_get_full_version,
-        .perm_check = always_allow
+        .perm_check = manager_or_root
     },
     { 
         .cmd = KSU_IOCTL_HOOK_TYPE,

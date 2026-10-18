@@ -844,7 +844,7 @@ static int handle_jeita(struct step_chg_info *chip)
 	u64 elapsed_us;
 #if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
 	int update_now = 0;
-	int curr_vfloat_uv, curr_vbat_uv;
+	int curr_vbat_uv;
 	int temp, pd_authen_result = 0;
 	static bool fast_mode_dis, usb_present;
 	int batt_soc = 0, batt_temp = 0;
@@ -885,6 +885,8 @@ static int handle_jeita(struct step_chg_info *chip)
 	}
 	if (pval.intval && pval.intval != usb_present)
 		update_now = true;
+	if (!pval.intval)
+		fast_mode_dis = false;
 	usb_present = pval.intval;
 #endif
 
@@ -929,6 +931,10 @@ static int handle_jeita(struct step_chg_info *chip)
 		return -EINVAL;
 
 #if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+	if (temp < BATT_WARM_THRESHOLD && temp > BATT_COOL_THRESHOLD) {
+		if (fcc_ua < 5900000)
+			fcc_ua = 5900000;
+	}
 	if (rc == -ENODATA)
 		vote(chip->fcc_votable, JEITA_VOTER, true, fcc_ua);
 	else
@@ -945,6 +951,10 @@ static int handle_jeita(struct step_chg_info *chip)
 		fv_uv = 0;
 
 #if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+	if (temp < BATT_WARM_THRESHOLD && temp > BATT_COOL_THRESHOLD) {
+		if (fv_uv < 4475000)
+			fv_uv = 4475000;
+	}
 	batt_temp = pval.intval;
 	rc = power_supply_get_property(chip->bms_psy,
 				POWER_SUPPLY_PROP_CAPACITY, &pval);
@@ -1087,14 +1097,14 @@ static int handle_jeita(struct step_chg_info *chip)
 		}
 		curr_vbat_uv = pval.intval;
 
-		if (!chip->six_pin_battery) {
-			if ((curr_vbat_uv > fv_uv) && (temp >= BATT_WARM_THRESHOLD))
+		if (temp < BATT_WARM_THRESHOLD) {
+			vote(chip->usb_icl_votable, JEITA_VOTER, false, 0);
+		} else if (!chip->six_pin_battery) {
+			if (curr_vbat_uv > fv_uv)
 				vote(chip->usb_icl_votable, JEITA_VOTER, true, 0);
 			else if (curr_vbat_uv < (fv_uv - JEITA_SUSPEND_HYST_UV))
 				vote(chip->usb_icl_votable, JEITA_VOTER, false, 0);
 		} else {
-			curr_vfloat_uv = get_effective_result(chip->fv_votable);
-
 			rc = power_supply_get_property(chip->batt_psy,
 					POWER_SUPPLY_PROP_CHARGE_TYPE, &pval);
 			if (rc < 0) {
@@ -1102,21 +1112,11 @@ static int handle_jeita(struct step_chg_info *chip)
 				goto set_jeita_fv;
 			}
 
-			if (curr_vfloat_uv != WARM_VFLOAT_UV) {
-				if (curr_vbat_uv > fv_uv + JEITA_SIX_PIN_BATT_HYST_UV) {
-					if (pval.intval == POWER_SUPPLY_CHARGE_TYPE_TAPER && fv_uv == WARM_VFLOAT_UV)
-						vote(chip->usb_icl_votable, JEITA_VOTER, true, 0);
-				} else if (curr_vbat_uv < (fv_uv - JEITA_SUSPEND_HYST_UV)) {
-					vote(chip->usb_icl_votable, JEITA_VOTER, false, 0);
-				}
-			} else {
-				pr_info("curr_vbat_uv = %duV,FCC =%duA,FV = %duV\n",curr_vbat_uv, fcc_ua, fv_uv);
-				if (curr_vbat_uv > fv_uv + JEITA_SIX_PIN_BATT_HYST_UV) {
-					if (pval.intval == POWER_SUPPLY_CHARGE_TYPE_TAPER && fv_uv == WARM_VFLOAT_UV)
-						vote(chip->usb_icl_votable, JEITA_VOTER, true, 0);
-				} else if (curr_vbat_uv < (fv_uv - JEITA_SUSPEND_HYST_UV)) {
-					vote(chip->usb_icl_votable, JEITA_VOTER, false, 0);
-				}
+			if (curr_vbat_uv > fv_uv + JEITA_SIX_PIN_BATT_HYST_UV) {
+				if (pval.intval == POWER_SUPPLY_CHARGE_TYPE_TAPER && fv_uv == WARM_VFLOAT_UV)
+					vote(chip->usb_icl_votable, JEITA_VOTER, true, 0);
+			} else if (curr_vbat_uv < (fv_uv - JEITA_SUSPEND_HYST_UV)) {
+				vote(chip->usb_icl_votable, JEITA_VOTER, false, 0);
 			}
 		}
 #elif defined(CONFIG_MACH_XIAOMI_SM8150)
