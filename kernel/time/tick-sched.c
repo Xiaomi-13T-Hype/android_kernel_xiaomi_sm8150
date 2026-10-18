@@ -29,6 +29,7 @@
 #include <linux/timer.h>
 #include <linux/context_tracking.h>
 #include <linux/rq_stats.h>
+#include <linux/lockdep.h>
 
 #include <asm/irq_regs.h>
 

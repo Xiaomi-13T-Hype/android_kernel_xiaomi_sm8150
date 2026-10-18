@@ -4103,19 +4103,6 @@ void lru_gen_look_around(struct page_vma_mapped_walk *pvmw)
  *                          the eviction
  ******************************************************************************/
 
-#ifdef CONFIG_CMA
-static bool skip_cma(struct page *page, struct scan_control *sc)
-{
-	return !current_is_kswapd() &&
-			gfpflags_to_migratetype(sc->gfp_mask) != MIGRATE_MOVABLE &&
-			get_pageblock_migratetype(page) == MIGRATE_CMA;
-}
-#else
-static inline bool skip_cma(struct page *page, struct scan_control *sc)
-{
-	return false;
-}
-#endif
 
 static bool sort_page(struct lruvec *lruvec, struct page *page, struct scan_control *sc,
 		       int tier_idx)
